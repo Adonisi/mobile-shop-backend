@@ -45,7 +45,7 @@ jobs:
             .env
             *.tar.gz
 
-      - name: Check files in public_html
+      - name: Setup Laravel web access
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.HOSTINGER_SSH_HOST }}
@@ -54,9 +54,15 @@ jobs:
           port: ${{ secrets.HOSTINGER_SSH_PORT }}
           script: |
             cd domains/deliumontage.com/public_html/mobile-shop-api
-            pwd
-            ls -la
-            echo "Files successfully deployed to mobile-shop-api!"
+            
+            # Create redirect to public directory
+            echo '<?php header("Location: public/"); exit; ?>' > index.php
+            
+            # Also create .htaccess in root to redirect all requests to public
+            echo 'RewriteEngine On' > .htaccess
+            echo 'RewriteRule ^(.*)$ public/$1 [L]' >> .htaccess
+            
+            echo "Laravel web access configured!"
 
       - name: Install dependencies and run Laravel commands
         uses: appleboy/ssh-action@v1.0.0
