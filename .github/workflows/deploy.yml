@@ -19,7 +19,7 @@ jobs:
           php-version: '8.2'
 
       - name: Install Composer dependencies
-        run: composer install --no-dev --optimize-autoloader
+        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
 
       - name: Install Node dependencies and build assets
         run: |
@@ -27,7 +27,7 @@ jobs:
           npm run build
 
       - name: Create deployment package
-        run: tar --exclude='.git' -czf deployment.tar.gz .
+        run: tar --exclude='.git' --warning=no-file-changed -czf deployment.tar.gz .
 
       - name: Copy deployment package via SCP
         uses: appleboy/scp-action@v0.1.7
@@ -78,6 +78,6 @@ jobs:
           port: ${{ secrets.HOSTINGER_SSH_PORT }}
           script: |
             cd domains/deliumontage.com/public_html/mobile-shop-api
-            composer install --no-dev --optimize-autoloader
+            composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
             php artisan key:generate --force
             php artisan migrate --force
