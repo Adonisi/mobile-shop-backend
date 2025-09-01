@@ -26,26 +26,21 @@ jobs:
           npm install
           npm run build
 
-      - name: Copy files via SCP
+      - name: Create deployment package
+        run: tar --exclude='.git' --warning=no-file-changed -czf deployment.tar.gz .
+
+      - name: Copy deployment package via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.HOSTINGER_SSH_HOST }}
           username: ${{ secrets.HOSTINGER_SSH_USER }}
           password: ${{ secrets.HOSTINGER_SSH_PASS }}
           port: ${{ secrets.HOSTINGER_SSH_PORT }}
-          source: "."
+          source: "deployment.tar.gz"
           target: "domains/deliumontage.com/public_html/mobile-shop-api"
           overwrite: true
-          exclude: |
-            .git/
-            .gitignore
-            node_modules/
-            vendor/
-            tests/
-            .env
-            *.tar.gz
 
-      - name: Check files in public_html
+      - name: Extract and deploy files
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.HOSTINGER_SSH_HOST }}
@@ -54,11 +49,22 @@ jobs:
           port: ${{ secrets.HOSTINGER_SSH_PORT }}
           script: |
             cd domains/deliumontage.com/public_html/mobile-shop-api
-            pwd
-            ls -la
-            echo "Files successfully deployed to deliumontage.com/public_html/mobile-shop-api!"
+            
+            # Remove old deployment if exists
+            rm -rf *
+            
+            # Extract the deployment package
+            tar -xzf deployment.tar.gz
+            
+            # Clean up the package
+            rm deployment.tar.gz
+            
+            # Create a redirect to public directory
+            echo '<?php header("Location: public/"); exit; ?>' > index.php
+            
+            echo "Files successfully deployed to api subdomain!"
 
-      - name: Fix Laravel deployment issues
+      - name: Install dependencies and run Laravel commands
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.HOSTINGER_SSH_HOST }}
@@ -72,19 +78,17 @@ jobs:
             chmod -R 755 storage
             chmod -R 755 bootstrap/cache
             
-            echo "Laravel deployment fixes applied!"
-
-      - name: Run artisan migrate
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.HOSTINGER_SSH_HOST }}
-          username: ${{ secrets.HOSTINGER_SSH_USER }}
-          password: ${{ secrets.HOSTINGER_SSH_PASS }}
-          port: ${{ secrets.HOSTINGER_SSH_PORT }}
-          script: |
-            cd domains/deliumontage.com/public_html/mobile-shop-api
+            # Install Composer dependencies
             composer install --no-dev --optimize-autoloader
+            
+            # Generate application key
             php artisan key:generate --force
+            
+            # Run database migrations
             php artisan migrate --force
+            
+            # Clear and cache configurations
             php artisan optimize:clear
             php artisan optimize
+            
+            echo "Laravel deployment completed successfully!"
