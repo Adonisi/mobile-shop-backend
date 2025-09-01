@@ -26,26 +26,26 @@ jobs:
           npm install
           npm run build
 
-      - name: Wait for file operations to complete
-        run: sleep 5
-
-      - name: Create deployment package
-        run: |
-          # Create deployment package with comprehensive exclusions
-          tar --exclude='.git' --exclude='.github' --exclude='node_modules' --exclude='vendor' --exclude='tests' --exclude='.env' --exclude='*.tar.gz' --exclude='.gitignore' --exclude='storage/logs/*' --exclude='storage/framework/cache/*' --exclude='storage/framework/sessions/*' --exclude='storage/framework/views/*' --warning=no-file-changed -czf deployment.tar.gz .
-
-      - name: Copy deployment package via SCP
+      - name: Copy files via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.HOSTINGER_SSH_HOST }}
           username: ${{ secrets.HOSTINGER_SSH_USER }}
           password: ${{ secrets.HOSTINGER_SSH_PASS }}
           port: ${{ secrets.HOSTINGER_SSH_PORT }}
-          source: "deployment.tar.gz"
+          source: "."
           target: "domains/deliumontage.com/public_html/mobile-shop-api"
           overwrite: true
+          exclude: |
+            .git/
+            .gitignore
+            node_modules/
+            vendor/
+            tests/
+            .env
+            *.tar.gz
 
-      - name: Extract and deploy files
+      - name: Check files in public_html
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.HOSTINGER_SSH_HOST }}
@@ -54,20 +54,9 @@ jobs:
           port: ${{ secrets.HOSTINGER_SSH_PORT }}
           script: |
             cd domains/deliumontage.com/public_html/mobile-shop-api
-            
-            # Remove old deployment if exists
-            rm -rf *
-            
-            # Extract the deployment package
-            tar -xzf deployment.tar.gz
-            
-            # Clean up the package
-            rm deployment.tar.gz
-            
-            # Create a redirect to public directory
-            echo '<?php header("Location: public/"); exit; ?>' > index.php
-            
-            echo "Files successfully deployed to api subdomain!"
+            pwd
+            ls -la
+            echo "Files successfully deployed to mobile-shop-api!"
 
       - name: Install dependencies and run Laravel commands
         uses: appleboy/ssh-action@v1.0.0
