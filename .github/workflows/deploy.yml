@@ -1,0 +1,88 @@
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Install Node dependencies and build assets
+        run: |
+          npm install
+          npm run build
+
+      - name: Copy files via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          password: ${{ secrets.HOSTINGER_SSH_PASS }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          source: "."
+          target: "domains/deliumontage.com/public_html/mobile-shop-api"
+          overwrite: true
+          exclude: |
+            .git/
+            .gitignore
+            node_modules/
+            vendor/
+            tests/
+            .env
+            *.tar.gz
+
+      - name: Check files in public_html
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          password: ${{ secrets.HOSTINGER_SSH_PASS }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          script: |
+            cd domains/deliumontage.com/public_html
+            pwd
+            ls -la
+            echo "Files successfully deployed to deliumontage.com/public_html!"
+
+      - name: Fix Laravel deployment issues
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          password: ${{ secrets.HOSTINGER_SSH_PASS }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          script: |
+            cd domains/deliumontage.com/public_html
+            
+            # Set proper permissions
+            chmod -R 755 storage
+            chmod -R 755 bootstrap/cache
+            
+            echo "Laravel deployment fixes applied!"
+
+      - name: Run artisan migrate
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          password: ${{ secrets.HOSTINGER_SSH_PASS }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          script: |
+            cd domains/deliumontage.com/public_html
+            composer install --no-dev --optimize-autoloader
+            php artisan key:generate --force
+            php artisan migrate --force
