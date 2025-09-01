@@ -71,6 +71,16 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('/test', function () {
     return response()->json([
         'message' => 'Laravel API is working!',
-        'status' => 'success'
+        'status' => 'success',
+        'cors_headers' => [
+            'origin' => request()->header('Origin'),
+            'method' => request()->method(),
+            'headers' => request()->headers->all()
+        ]
     ]);
+});
+
+// CORS test route
+Route::options('/cors-test', function () {
+    return response('', 200);
 });

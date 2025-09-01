@@ -15,7 +15,12 @@ class Cors
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $response = $next($request);
+        // Handle preflight OPTIONS request
+        if ($request->isMethod('OPTIONS')) {
+            $response = response('', 200);
+        } else {
+            $response = $next($request);
+        }
         
         // Allow specific origins
         $allowedOrigins = [
@@ -30,6 +35,8 @@ class Cors
         ];
         
         $origin = $request->header('Origin');
+        
+        // Always set CORS headers for API routes
         if (in_array($origin, $allowedOrigins)) {
             $response->headers->set('Access-Control-Allow-Origin', $origin);
         }
@@ -38,11 +45,6 @@ class Cors
         $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-TOKEN, Accept, Origin');
         $response->headers->set('Access-Control-Allow-Credentials', 'true');
         $response->headers->set('Access-Control-Max-Age', '86400');
-        
-        if ($request->isMethod('OPTIONS')) {
-            $response->setStatusCode(200);
-            $response->setContent('');
-        }
         
         return $response;
     }
