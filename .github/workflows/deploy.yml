@@ -26,90 +26,58 @@ jobs:
           npm install
           npm run build
 
-             - name: Create deployment package
-         run: |
-           # Create a clean deployment directory
-           mkdir -p deployment
-           cp -r app deployment/
-           cp -r bootstrap deployment/
-           cp -r config deployment/
-           cp -r database deployment/
-           cp -r lang deployment/
-           cp -r public deployment/
-           cp -r resources deployment/
-           cp -r routes deployment/
-           cp -r storage deployment/
-           cp artisan deployment/
-           cp composer.json deployment/
-           cp composer.lock deployment/
-           cp package.json deployment/
-           cp package-lock.json deployment/
-           cp vite.config.js deployment/
-           cp .env.example deployment/
-           
-           # Create tar.gz package
-           tar -czf deployment.tar.gz -C deployment .
-           rm -rf deployment
+      - name: Create deployment package
+        run: tar --exclude='.git' -czf deployment.tar.gz .
 
-       - name: Copy deployment package via SCP
-         uses: appleboy/scp-action@v0.1.7
-         with:
-           host: ${{ secrets.HOSTINGER_SSH_HOST }}
-           username: ${{ secrets.HOSTINGER_SSH_USER }}
-           password: ${{ secrets.HOSTINGER_SSH_PASS }}
-           port: ${{ secrets.HOSTINGER_SSH_PORT }}
-           source: "deployment.tar.gz"
-           target: "domains/deliumontage.com/public_html"
-           overwrite: true
+      - name: Copy deployment package via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          password: ${{ secrets.HOSTINGER_SSH_PASS }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          source: "deployment.tar.gz"
+          target: "domains/deliumontage.com/public_html/mobile-shop-api"
+          overwrite: true
 
-             - name: Extract and deploy files
-         uses: appleboy/ssh-action@v1.0.0
-         with:
-           host: ${{ secrets.HOSTINGER_SSH_HOST }}
-           username: ${{ secrets.HOSTINGER_SSH_USER }}
-           password: ${{ secrets.HOSTINGER_SSH_PASS }}
-           port: ${{ secrets.HOSTINGER_SSH_PORT }}
-           script: |
-             cd domains/deliumontage.com/public_html
-             
-             # Remove old deployment if exists
-             rm -rf mobile-shop-api
-             mkdir -p mobile-shop-api
-             
-             # Extract the deployment package
-             tar -xzf deployment.tar.gz -C mobile-shop-api
-             
-             # Clean up the package
-             rm deployment.tar.gz
-             
-             # Set proper permissions
-             chmod -R 755 mobile-shop-api/storage
-             chmod -R 755 mobile-shop-api/bootstrap/cache
-             
-             echo "Files successfully deployed to mobile-shop-api directory!"
+      - name: Check files in public_html
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          password: ${{ secrets.HOSTINGER_SSH_PASS }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          script: |
+            cd domains/deliumontage.com/public_html/mobile-shop-api
+            pwd
+            ls -la
+            echo "Files successfully deployed to deliumontage.com/public_html/mobile-shop-api!"
 
-             - name: Install dependencies and run Laravel commands
-         uses: appleboy/ssh-action@v1.0.0
-         with:
-           host: ${{ secrets.HOSTINGER_SSH_HOST }}
-           username: ${{ secrets.HOSTINGER_SSH_USER }}
-           password: ${{ secrets.HOSTINGER_SSH_PASS }}
-           port: ${{ secrets.HOSTINGER_SSH_PORT }}
-           script: |
-             cd domains/deliumontage.com/public_html/mobile-shop-api
-             
-             # Install Composer dependencies
-             composer install --no-dev --optimize-autoloader
-             
-             # Generate application key
-             php artisan key:generate --force
-             
-             # Run database migrations
-             php artisan migrate --force
-             
-             # Clear and cache configurations
-             php artisan config:clear
-             php artisan route:clear
-             php artisan view:clear
-             
-             echo "Laravel deployment completed successfully!"
+      - name: Fix Laravel deployment issues
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          password: ${{ secrets.HOSTINGER_SSH_PASS }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          script: |
+            cd domains/deliumontage.com/public_html/mobile-shop-api
+            
+            # Set proper permissions
+            chmod -R 755 storage
+            chmod -R 755 bootstrap/cache
+            
+            echo "Laravel deployment fixes applied!"
+
+      - name: Run artisan migrate
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          password: ${{ secrets.HOSTINGER_SSH_PASS }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          script: |
+            cd domains/deliumontage.com/public_html/mobile-shop-api
+            composer install --no-dev --optimize-autoloader
+            php artisan key:generate --force
+            php artisan migrate --force
