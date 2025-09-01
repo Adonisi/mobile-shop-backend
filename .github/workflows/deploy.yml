@@ -26,8 +26,13 @@ jobs:
           npm install
           npm run build
 
+      - name: Wait for file operations to complete
+        run: sleep 5
+
       - name: Create deployment package
-        run: tar --exclude='.git' --warning=no-file-changed -czf deployment.tar.gz .
+        run: |
+          # Create deployment package with comprehensive exclusions
+          tar --exclude='.git' --exclude='.github' --exclude='node_modules' --exclude='vendor' --exclude='tests' --exclude='.env' --exclude='*.tar.gz' --exclude='.gitignore' --exclude='storage/logs/*' --exclude='storage/framework/cache/*' --exclude='storage/framework/sessions/*' --exclude='storage/framework/views/*' --warning=no-file-changed -czf deployment.tar.gz .
 
       - name: Copy deployment package via SCP
         uses: appleboy/scp-action@v0.1.7
