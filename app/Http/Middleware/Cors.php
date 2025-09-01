@@ -22,7 +22,11 @@ class Cors
             'http://localhost:5173',
             'http://127.0.0.1:5173',
             'http://localhost:3000',
-            'http://127.0.0.1:3000'
+            'http://127.0.0.1:3000',
+            'https://mobile-shop.deliumontage.com',
+            'https://www.mobile-shop.deliumontage.com',
+            'http://mobile-shop.deliumontage.com',
+            'http://www.mobile-shop.deliumontage.com'
         ];
         
         $origin = $request->header('Origin');
